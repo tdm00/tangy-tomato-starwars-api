@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from starwars_api.routers import v1, v2
+from starwars_api.routers import v1, v2, v3
 
 # Root app (no docs here, only mounts)
 app = FastAPI(
@@ -31,3 +31,14 @@ v2_app = FastAPI(
 )
 v2_app.include_router(v2.router)
 app.mount("/api/v2", v2_app)
+
+# Version 3 sub-app
+v3_app = FastAPI(
+    title="Star Wars API v3",
+    version="3.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+v3_app.include_router(v3.router)
+app.mount("/api/v3", v3_app)
