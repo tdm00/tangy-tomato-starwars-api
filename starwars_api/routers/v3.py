@@ -1,22 +1,18 @@
-from fastapi import APIRouter, Query, HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from typing import Optional, List
+from fastapi import APIRouter, Request, Response, HTTPException, Query
+from fastapi.responses import JSONResponse, PlainTextResponse
 from datetime import datetime
 from dicttoxml import dicttoxml
 
 router = APIRouter()
 
-QUOTES = [
+quotes = [
     {
         "id": 1,
         "quote": "Do. Or do not. There is no try.",
         "character": "Yoda",
         "category": "wisdom",
         "episode": "The Empire Strikes Back",
-        "source": {
-            "movie": "The Empire Strikes Back",
-            "scene_url": "https://starwars.com/empire/yoda"
-        }
+        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/yoda"},
     },
     {
         "id": 2,
@@ -24,10 +20,7 @@ QUOTES = [
         "character": "Various",
         "category": "humor",
         "episode": "Multiple",
-        "source": {
-            "movie": "Various",
-            "scene_url": "https://starwars.com/recurring/badfeeling"
-        }
+        "source": {"movie": "Various", "scene_url": "https://starwars.com/recurring/badfeeling"},
     },
     {
         "id": 3,
@@ -35,10 +28,7 @@ QUOTES = [
         "character": "Obi-Wan Kenobi",
         "category": "wisdom",
         "episode": "A New Hope",
-        "source": {
-            "movie": "A New Hope",
-            "scene_url": "https://starwars.com/anewhope/obiwan"
-        }
+        "source": {"movie": "A New Hope", "scene_url": "https://starwars.com/anewhope/obiwan"},
     },
     {
         "id": 4,
@@ -46,10 +36,7 @@ QUOTES = [
         "character": "Admiral Ackbar",
         "category": "humor",
         "episode": "Return of the Jedi",
-        "source": {
-            "movie": "Return of the Jedi",
-            "scene_url": "https://starwars.com/jedi/ackbar"
-        }
+        "source": {"movie": "Return of the Jedi", "scene_url": "https://starwars.com/jedi/ackbar"},
     },
     {
         "id": 5,
@@ -57,130 +44,109 @@ QUOTES = [
         "character": "Darth Vader",
         "category": "drama",
         "episode": "The Empire Strikes Back",
-        "source": {
-            "movie": "The Empire Strikes Back",
-            "scene_url": "https://starwars.com/empire/vader"
-        }
+        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/vader"},
     },
     {
         "id": 6,
+        "quote": "Never tell me the odds!",
+        "character": "Han Solo",
+        "category": "humor",
+        "episode": "The Empire Strikes Back",
+        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/han"},
+    },
+    {
+        "id": 7,
         "quote": "Your focus determines your reality.",
         "character": "Qui-Gon Jinn",
         "category": "wisdom",
         "episode": "The Phantom Menace",
-        "source": {
-            "movie": "The Phantom Menace",
-            "scene_url": "https://starwars.com/menace/focus"
-        }
-    },
-    {
-        "id": 7,
-        "quote": "This is the way.",
-        "character": "The Mandalorian",
-        "category": "loyalty",
-        "episode": "The Mandalorian",
-        "source": {
-            "movie": "The Mandalorian",
-            "scene_url": "https://starwars.com/mandalorian/way"
-        }
+        "source": {"movie": "The Phantom Menace", "scene_url": "https://starwars.com/menace/focus"},
     },
     {
         "id": 8,
-        "quote": "Let the past die. Kill it if you have to.",
-        "character": "Kylo Ren",
+        "quote": "I find your lack of faith disturbing.",
+        "character": "Darth Vader",
         "category": "drama",
-        "episode": "The Last Jedi",
-        "source": {
-            "movie": "The Last Jedi",
-            "scene_url": "https://starwars.com/lastjedi/kylo"
-        }
+        "episode": "A New Hope",
+        "source": {"movie": "A New Hope", "scene_url": "https://starwars.com/anewhope/vader"},
     },
     {
         "id": 9,
-        "quote": "Chewie, we’re home.",
-        "character": "Han Solo",
-        "category": "nostalgia",
-        "episode": "The Force Awakens",
-        "source": {
-            "movie": "The Force Awakens",
-            "scene_url": "https://starwars.com/awakens/han"
-        }
+        "quote": "I love you. I know.",
+        "character": "Leia & Han",
+        "category": "romance",
+        "episode": "The Empire Strikes Back",
+        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/love"},
     },
     {
         "id": 10,
-        "quote": "Power! Unlimited power!",
-        "character": "Darth Sidious",
-        "category": "power",
-        "episode": "Revenge of the Sith",
-        "source": {
-            "movie": "Revenge of the Sith",
-            "scene_url": "https://starwars.com/sith/sidious"
-        }
-    }
+        "quote": "Stay on target.",
+        "character": "Gold Five",
+        "category": "inspiration",
+        "episode": "A New Hope",
+        "source": {"movie": "A New Hope", "scene_url": "https://starwars.com/anewhope/target"},
+    },
 ]
 
-
-@router.get("/quote", response_class=Response)
-def get_quote(
-    id: Optional[int] = Query(None),
-    character: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
-    page: int = Query(1, ge=1),
-    size: int = Query(5, ge=1),
-    format: Optional[str] = Query("json")
+@router.get("/quote")
+async def get_quotes(
+    format: str = Query("json"),
+    character: str = None,
+    category: str = None,
+    page: int = 1,
+    size: int = 5,
 ):
-    timestamp = datetime.utcnow().isoformat()
+    if format not in {"json", "text", "xml"}:
+        raise HTTPException(status_code=400, detail="Unsupported format")
 
-    # If ID is provided, return that specific quote
-    if id is not None:
-        quote = next((q for q in QUOTES if q["id"] == id), None)
-        if not quote:
-            raise HTTPException(status_code=404, detail="Quote not found")
-
-        if format == "text":
-            return PlainTextResponse(content=quote["quote"])
-        elif format == "xml":
-            xml = dicttoxml(
-                {"version": "v3", "timestamp": timestamp, "quote": quote},
-                custom_root="response",
-                attr_type=False,
-            )
-            return Response(content=xml, media_type="application/xml")
-        else:
-            return {
-                "version": "v3",
-                "timestamp": timestamp,
-                "quote": quote
-            }
-
-    # Filtering
-    filtered = QUOTES
+    filtered = quotes
     if character:
         filtered = [q for q in filtered if q["character"].lower() == character.lower()]
     if category:
         filtered = [q for q in filtered if q["category"].lower() == category.lower()]
 
-    total = len(filtered)
     start = (page - 1) * size
     end = start + size
-    paginated = filtered[start:end]
+    paged_quotes = filtered[start:end]
 
-    response_data = {
+    payload = {
         "version": "v3",
-        "timestamp": timestamp,
+        "timestamp": datetime.utcnow().isoformat(),
         "page": page,
         "size": size,
-        "total": total,
-        "quotes": paginated,
+        "total": len(filtered),
+        "quotes": paged_quotes,
     }
 
-    if format == "text":
-        return PlainTextResponse(
-            content="\n\n".join([q["quote"] for q in paginated])
-        )
+    if format == "json":
+        return JSONResponse(content=payload)
+    elif format == "text":
+        lines = [f"{q['quote']} – {q['character']}" for q in paged_quotes]
+        return PlainTextResponse("\n".join(lines))
     elif format == "xml":
-        xml = dicttoxml(response_data, custom_root="response", attr_type=False)
-        return Response(content=xml, media_type="application/xml")
-    else:
-        return JSONResponse(content=response_data)
-    
+        xml_bytes = dicttoxml(payload, custom_root="response", attr_type=False)
+        return Response(content=xml_bytes, media_type="application/xml")
+
+
+@router.get("/quote/{quote_id}")
+async def get_quote_by_id(quote_id: int, format: str = Query("json")):
+    if format not in {"json", "text", "xml"}:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+
+    match = next((q for q in quotes if q["id"] == quote_id), None)
+    if not match:
+        raise HTTPException(status_code=404, detail="Quote not found")
+
+    payload = {
+        "version": "v3",
+        "timestamp": datetime.utcnow().isoformat(),
+        "quote": match,
+    }
+
+    if format == "json":
+        return JSONResponse(content=payload)
+    elif format == "text":
+        return PlainTextResponse(f"{match['quote']} – {match['character']}")
+    elif format == "xml":
+        xml_bytes = dicttoxml(payload, custom_root="response", attr_type=False)
+        return Response(content=xml_bytes, media_type="application/xml")
