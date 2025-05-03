@@ -3,19 +3,19 @@ import random
 
 router = APIRouter()
 
-quotes = [
+QUOTES = [
     "Do. Or do not. There is no try.",
     "I’ve got a bad feeling about this.",
-    "It’s a trap!",
-    "The Force will be with you. Always.",
     "Never tell me the odds!",
+    "It’s a trap!",
     "I find your lack of faith disturbing.",
-    "So this is how liberty dies… with thunderous applause.",
-    "I am your father.",
+    "The Force will be with you. Always.",
+    "Help me, Obi-Wan Kenobi. You’re my only hope.",
     "Your focus determines your reality.",
-    "Now, young Skywalker, you will die."
+    "Now, young Skywalker, you will die.",
+    "This is the way."
 ]
 
-@router.get("/quote")
-def get_star_wars_quote():
-    return {"quote": random.choice(quotes)}
+@router.get("/quote", tags=["Quotes"])
+def get_quote():
+    return {"quote": random.choice(QUOTES)}
