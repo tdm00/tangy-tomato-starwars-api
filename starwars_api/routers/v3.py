@@ -1,19 +1,22 @@
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-import xml.etree.ElementTree as ET
+from dicttoxml import dicttoxml
 
 router = APIRouter()
 
-quotes = [
+QUOTES = [
     {
         "id": 1,
         "quote": "Do. Or do not. There is no try.",
         "character": "Yoda",
         "category": "wisdom",
         "episode": "The Empire Strikes Back",
-        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/yoda"}
+        "source": {
+            "movie": "The Empire Strikes Back",
+            "scene_url": "https://starwars.com/empire/yoda"
+        }
     },
     {
         "id": 2,
@@ -21,7 +24,10 @@ quotes = [
         "character": "Various",
         "category": "humor",
         "episode": "Multiple",
-        "source": {"movie": "Various", "scene_url": "https://starwars.com/recurring/badfeeling"}
+        "source": {
+            "movie": "Various",
+            "scene_url": "https://starwars.com/recurring/badfeeling"
+        }
     },
     {
         "id": 3,
@@ -29,7 +35,10 @@ quotes = [
         "character": "Obi-Wan Kenobi",
         "category": "wisdom",
         "episode": "A New Hope",
-        "source": {"movie": "A New Hope", "scene_url": "https://starwars.com/anewhope/obiwan"}
+        "source": {
+            "movie": "A New Hope",
+            "scene_url": "https://starwars.com/anewhope/obiwan"
+        }
     },
     {
         "id": 4,
@@ -37,7 +46,10 @@ quotes = [
         "character": "Admiral Ackbar",
         "category": "humor",
         "episode": "Return of the Jedi",
-        "source": {"movie": "Return of the Jedi", "scene_url": "https://starwars.com/jedi/ackbar"}
+        "source": {
+            "movie": "Return of the Jedi",
+            "scene_url": "https://starwars.com/jedi/ackbar"
+        }
     },
     {
         "id": 5,
@@ -45,82 +57,104 @@ quotes = [
         "character": "Darth Vader",
         "category": "drama",
         "episode": "The Empire Strikes Back",
-        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/vader"}
+        "source": {
+            "movie": "The Empire Strikes Back",
+            "scene_url": "https://starwars.com/empire/vader"
+        }
     },
     {
         "id": 6,
-        "quote": "Never tell me the odds!",
-        "character": "Han Solo",
-        "category": "humor",
-        "episode": "The Empire Strikes Back",
-        "source": {"movie": "The Empire Strikes Back", "scene_url": "https://starwars.com/empire/han"}
+        "quote": "Your focus determines your reality.",
+        "character": "Qui-Gon Jinn",
+        "category": "wisdom",
+        "episode": "The Phantom Menace",
+        "source": {
+            "movie": "The Phantom Menace",
+            "scene_url": "https://starwars.com/menace/focus"
+        }
     },
     {
         "id": 7,
-        "quote": "Now, young Skywalker, you will die.",
-        "character": "Emperor Palpatine",
-        "category": "drama",
-        "episode": "Return of the Jedi",
-        "source": {"movie": "Return of the Jedi", "scene_url": "https://starwars.com/jedi/palpatine"}
+        "quote": "This is the way.",
+        "character": "The Mandalorian",
+        "category": "loyalty",
+        "episode": "The Mandalorian",
+        "source": {
+            "movie": "The Mandalorian",
+            "scene_url": "https://starwars.com/mandalorian/way"
+        }
     },
     {
         "id": 8,
+        "quote": "Let the past die. Kill it if you have to.",
+        "character": "Kylo Ren",
+        "category": "drama",
+        "episode": "The Last Jedi",
+        "source": {
+            "movie": "The Last Jedi",
+            "scene_url": "https://starwars.com/lastjedi/kylo"
+        }
+    },
+    {
+        "id": 9,
         "quote": "Chewie, we’re home.",
         "character": "Han Solo",
         "category": "nostalgia",
         "episode": "The Force Awakens",
-        "source": {"movie": "The Force Awakens", "scene_url": "https://starwars.com/awakens/home"}
-    },
-    {
-        "id": 9,
-        "quote": "I will not fight you, father.",
-        "character": "Luke Skywalker",
-        "category": "drama",
-        "episode": "Return of the Jedi",
-        "source": {"movie": "Return of the Jedi", "scene_url": "https://starwars.com/jedi/luke"}
+        "source": {
+            "movie": "The Force Awakens",
+            "scene_url": "https://starwars.com/awakens/han"
+        }
     },
     {
         "id": 10,
-        "quote": "Fear is the path to the dark side.",
-        "character": "Yoda",
-        "category": "wisdom",
-        "episode": "The Phantom Menace",
-        "source": {"movie": "The Phantom Menace", "scene_url": "https://starwars.com/menace/focus"}
-    },
+        "quote": "Power! Unlimited power!",
+        "character": "Darth Sidious",
+        "category": "power",
+        "episode": "Revenge of the Sith",
+        "source": {
+            "movie": "Revenge of the Sith",
+            "scene_url": "https://starwars.com/sith/sidious"
+        }
+    }
 ]
 
-def to_xml(data: dict) -> str:
-    root = ET.Element("response")
-    for key, value in data.items():
-        if isinstance(value, list):
-            list_elem = ET.SubElement(root, key)
-            for item in value:
-                item_elem = ET.SubElement(list_elem, "quote")
-                for k, v in item.items():
-                    if isinstance(v, dict):
-                        dict_elem = ET.SubElement(item_elem, k)
-                        for dk, dv in v.items():
-                            sub_elem = ET.SubElement(dict_elem, dk)
-                            sub_elem.text = str(dv)
-                    else:
-                        sub_elem = ET.SubElement(item_elem, k)
-                        sub_elem.text = str(v)
-        else:
-            sub_elem = ET.SubElement(root, key)
-            sub_elem.text = str(value)
-    return ET.tostring(root, encoding="unicode")
 
-@router.get("/quote")
+@router.get("/quote", response_class=Response)
 def get_quote(
+    id: Optional[int] = Query(None),
     character: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
-    page: int = 1,
-    size: int = 5,
-    format: Optional[str] = Query("json"),
-    request: Request = None
+    page: int = Query(1, ge=1),
+    size: int = Query(5, ge=1),
+    format: Optional[str] = Query("json")
 ):
-    filtered = quotes
+    timestamp = datetime.utcnow().isoformat()
 
+    # If ID is provided, return that specific quote
+    if id is not None:
+        quote = next((q for q in QUOTES if q["id"] == id), None)
+        if not quote:
+            raise HTTPException(status_code=404, detail="Quote not found")
+
+        if format == "text":
+            return PlainTextResponse(content=quote["quote"])
+        elif format == "xml":
+            xml = dicttoxml(
+                {"version": "v3", "timestamp": timestamp, "quote": quote},
+                custom_root="response",
+                attr_type=False,
+            )
+            return Response(content=xml, media_type="application/xml")
+        else:
+            return {
+                "version": "v3",
+                "timestamp": timestamp,
+                "quote": quote
+            }
+
+    # Filtering
+    filtered = QUOTES
     if character:
         filtered = [q for q in filtered if q["character"].lower() == character.lower()]
     if category:
@@ -131,25 +165,22 @@ def get_quote(
     end = start + size
     paginated = filtered[start:end]
 
-    result = {
+    response_data = {
         "version": "v3",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": timestamp,
         "page": page,
         "size": size,
         "total": total,
         "quotes": paginated,
     }
 
-    headers = {
-        "X-RateLimit-Limit": "100",
-        "X-RateLimit-Remaining": "99",
-        "X-RateLimit-Reset": "60"
-    }
-
     if format == "text":
-        quotes_text = "\n".join([q["quote"] for q in paginated])
-        return PlainTextResponse(content=quotes_text, headers=headers)
+        return PlainTextResponse(
+            content="\n\n".join([q["quote"] for q in paginated])
+        )
     elif format == "xml":
-        return Response(content=to_xml(result), media_type="application/xml", headers=headers)
+        xml = dicttoxml(response_data, custom_root="response", attr_type=False)
+        return Response(content=xml, media_type="application/xml")
     else:
-        return JSONResponse(content=result, headers=headers)
+        return JSONResponse(content=response_data)
+    
