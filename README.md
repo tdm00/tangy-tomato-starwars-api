@@ -6,7 +6,7 @@ A versioned FastAPI application that returns a random Star Wars quote.
 
 ```bash
 # Create virtual environment and activate
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 
 # Install dependencies
