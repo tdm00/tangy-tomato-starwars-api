@@ -46,6 +46,8 @@ jobs:
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+          IMAGE_NAME=tdm00/starwars-api
+          CONTAINER_NAME=starwars-api
           docker pull $IMAGE_NAME:latest
           docker stop $CONTAINER_NAME || true
           docker rm $CONTAINER_NAME || true
